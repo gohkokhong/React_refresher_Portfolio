@@ -1,25 +1,40 @@
 import type { Route } from "./+types/details";
-import type { Project } from "~/types";
+import type { Project, StrapiProject, StrapiResponse } from "~/types";
 import { FaArrowLeft } from "react-icons/fa";
 import { Link } from "react-router";
 
 // Server loader
-export async function loader({ request, params }: Route.LoaderArgs): Promise<Project> {
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/projects/${params.id}`);
+export async function loader({ request, params }: Route.LoaderArgs) {
+    const { id } = params;
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/projects?filters[documentId][$eq]=${id}&populate=*`);
 
     if (!res.ok) throw new Response('Project not found', { status: 404 });
 
-    const project: Project = await res.json();
-    return project;
+    const json: StrapiResponse<StrapiProject> = await res.json();
+    const item = json.data[0];
+
+    const project: Project = {
+        id: item.id,
+        documentId: item.documentId,
+        title: item.title,
+        description: item.description,
+        image: item.image?.url ? `${import.meta.env.VITE_STRAPI_URL}${item.image.url}` : '/images/no-image.png',
+        url: item.url,
+        date: item.date,
+        category: item.category,
+        featured: item.featured
+    }
+
+    return { project };
 }
 
 // Component to be rendered on the page
 const ProjectDetailsPage = ({ loaderData }: Route.ComponentProps) => {
-    const project = loaderData;
+    const { project } = loaderData;
 
     return (
         <>
-            <Link to='/project' className="flex items-center text-blue-400 hover:text-blue-500 mb-6 transition">
+            <Link to='/projects' className="flex items-center text-blue-400 hover:text-blue-500 mb-6 transition">
                 <FaArrowLeft className="mr-2" /> Back to Projects
             </Link>
 
